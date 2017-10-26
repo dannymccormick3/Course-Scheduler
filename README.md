@@ -1,1 +1,1 @@
-"# Course-Scheduler" 
+Course Scheduler for my Artificial Intelligence Class
