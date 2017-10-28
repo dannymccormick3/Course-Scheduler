@@ -267,8 +267,8 @@ def is_valid_class (course, credit_hours, terms, prereqs, schedule, tot_hours_pe
 def main():
 	# TODO: Add heuristic portion
 	Course = namedtuple('Course', 'program, designation')
-	goal_conditions = [Course('CS', 'major')]
-	initial_state = [Course('CS', '1101')]
+	goal_conditions = [Course('CS', '2231'), Course('CS', '3251'), Course('CS', 'statsprobability')]
+	initial_state = [Course('MATH', '2810'), Course('MATH', '2820'), Course('MATH', '3640')]
 	plan = course_scheduler(create_course_dict(), goal_conditions, initial_state)
 	pp = pprint.PrettyPrinter()
 
