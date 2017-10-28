@@ -77,6 +77,8 @@ def course_scheduler (course_descriptions, goal_conditions, initial_state):
 	for i in range (1,9):
 		tot_hours_per_semester[i] = 0
 	schedule, tot_hours_per_semester = create_satisfying_schedule(course_descriptions, goal_conditions_map, initial_state_map, tot_hours_per_semester)
+	if len(schedule) == 0:
+		return schedule
 	schedule = fill_courseload(course_descriptions, schedule, tot_hours_per_semester)
 	return format_schedule(schedule, course_descriptions)
 
@@ -300,8 +302,8 @@ def is_valid_class (course, credit_hours, terms, prereqs, schedule, tot_hours_pe
 def main():
 	# TODO: Add heuristic portion
 	Course = namedtuple('Course', 'program, designation')
-	goal_conditions = [Course('CS', '1101')]
-	initial_state = [Course('CS', '1101')]
+	goal_conditions = [Course('CS', 'major'), Course('JAPN', '3891')]
+	initial_state = [Course('CS', '1101'), Course('JAPN', '1101')]
 	plan = course_scheduler(create_course_dict(), goal_conditions, initial_state)
 	pp = pprint.PrettyPrinter()
 
