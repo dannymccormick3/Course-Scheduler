@@ -92,12 +92,12 @@ def format_schedule(schedule, course_descriptions):
 					semester_number += 1
 				semester_number = semester_number / 2
 				if semester_number == 2:
-					year = "Soph"
+					year = "Sophomore"
 				elif semester_number == 3:
 					year = "Junior"
 				elif semester_number == 4:
 					year = "Senior"
-				formatted_schedule[(course[0], course[1])] = (course_descriptions[course][0], semester, year)
+				formatted_schedule[(course[0], course[1])] = (course_descriptions[course][0], (semester, year), ())
 	return formatted_schedule
 
 def create_satisfying_schedule (course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester):
