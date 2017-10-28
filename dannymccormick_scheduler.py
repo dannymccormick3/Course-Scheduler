@@ -122,6 +122,7 @@ def create_satisfying_schedule (course_descriptions, goal_conditions, completed_
 		Returns 2 dictionaries. The first maps courses to the semester that they will be taken. The second maps semesters to the total number
 			of hours taken that semester. All prerequisites are satisfied and no semester has more than 18 hours.
 	"""
+	round_2 = False
 	if len(goal_conditions) == 0:
 		return completed_courses, tot_hours_per_semester
 	for goal_class in goal_conditions:
@@ -137,7 +138,7 @@ def create_satisfying_schedule (course_descriptions, goal_conditions, completed_
 				tot_hours_per_semester[completed_courses[goal_class]] -= int(course_descriptions[goal_class][0])
 				del completed_courses[goal_class]
 		perform_op = process_course (course_descriptions, dict(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester), goal_class)
-		if len(perform_op) > 0:
+		if len(perform_op[0]) > 0:
 			return perform_op
 	return {}, tot_hours_per_semester
 
@@ -167,7 +168,7 @@ def process_course (course_descriptions, goal_conditions, completed_courses, tot
 	semester = get_semester_assignment (int(goal_conditions[course]), tot_hours_per_semester, credit_hours, course_info[1])
 	if semester == -1:
 		# If no satisfying semester assignment, course can't be processed.
-		return {}
+		return {}, {}
 
 	# Remove course from goal conditions, add to completed_courses, update hours_per_semester
 	del goal_conditions[course]
@@ -198,7 +199,7 @@ def process_course (course_descriptions, goal_conditions, completed_courses, tot
 			attempt = create_satisfying_schedule(course_descriptions, new_goal_conditions, dict(completed_courses), dict(tot_hours_per_semester))
 			if len(attempt) != 0:
 				return attempt
-	return {}
+	return {}, {}
 
 def get_semester_assignment (latest_semester, tot_hours_per_semester, credit_hours, terms):
 	"""
@@ -302,7 +303,7 @@ def is_valid_class (course, credit_hours, terms, prereqs, schedule, tot_hours_pe
 def main():
 	# TODO: Add heuristic portion
 	Course = namedtuple('Course', 'program, designation')
-	goal_conditions = [Course('CS', 'major'), Course('JAPN', '3891')]
+	goal_conditions = [Course('CS', 'major')]
 	initial_state = [Course('CS', '1101'), Course('JAPN', '1101')]
 	plan = course_scheduler(create_course_dict(), goal_conditions, initial_state)
 	pp = pprint.PrettyPrinter()
