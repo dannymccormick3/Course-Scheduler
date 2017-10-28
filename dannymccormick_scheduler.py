@@ -73,7 +73,9 @@ def course_scheduler (course_descriptions, goal_conditions, initial_state):
 	"""
 	goal_conditions_map = add_semester_field(goal_conditions, 8)
 	initial_state_map = add_semester_field(initial_state, 0)
-	tot_hours_per_semester = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0}
+	tot_hours_per_semester = {}
+	for i in range (1,9):
+		tot_hours_per_semester[i] = 0
 	schedule, tot_hours_per_semester = create_satisfying_schedule(course_descriptions, goal_conditions_map, initial_state_map, tot_hours_per_semester)
 	schedule = fill_courseload(course_descriptions, schedule, tot_hours_per_semester)
 	return format_schedule(schedule, course_descriptions)
@@ -135,7 +137,7 @@ def create_satisfying_schedule (course_descriptions, goal_conditions, completed_
 		perform_op = process_course (course_descriptions, dict(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester), goal_class)
 		if len(perform_op) > 0:
 			return perform_op
-	return {}
+	return {}, tot_hours_per_semester
 
 def process_course (course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, course):
 	"""
@@ -248,13 +250,15 @@ def fill_courseload (course_descriptions, schedule, tot_hours_per_semester):
 	i = 1
 	while tot_hours_per_semester[i] == 0 or tot_hours_per_semester[i] >= 12:
 		i += 1
+		if i == 9:
+			return schedule
 	while i < 9:
 		for course in course_descriptions:
 			course_info = course_descriptions[course]
 			if is_valid_class(course, int(course_info[0]), course_info[1], course_info[2], schedule, tot_hours_per_semester, i):
 				schedule[course] = i
 				tot_hours_per_semester[i] += int(course_info[0])
-				while tot_hours_per_semester[i] >= 12:
+				while tot_hours_per_semester == 0 or tot_hours_per_semester[i] >= 12:
 					i += 1
 					if i == 9:
 						return schedule
@@ -296,8 +300,8 @@ def is_valid_class (course, credit_hours, terms, prereqs, schedule, tot_hours_pe
 def main():
 	# TODO: Add heuristic portion
 	Course = namedtuple('Course', 'program, designation')
-	goal_conditions = [Course('CS', 'mathematics'), Course('CS', 'core'), Course('MATH', '3641'), Course('CS', '1151'), Course('MATH', '2410')]
-	initial_state = [Course('CS', '1101'), Course('SPAN', '1101')]
+	goal_conditions = [Course('CS', '1101')]
+	initial_state = [Course('CS', '1101')]
 	plan = course_scheduler(create_course_dict(), goal_conditions, initial_state)
 	pp = pprint.PrettyPrinter()
 
