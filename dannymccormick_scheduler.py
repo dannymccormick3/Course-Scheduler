@@ -177,8 +177,6 @@ def assign_course_to_semester(course, goal_conditions, completed_courses, tot_ho
 		schedule = add_prereq_set(prereq_set, course_descriptions, list(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester), depth+1, latest_prereq_semester)
 		if len(schedule[0]) > 0:
 			return schedule
-		else:
-			print ("Test")
 	return {}, {}
 
 def add_prereq_set (prereq_set, course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, depth, latest_prereq_semester):
