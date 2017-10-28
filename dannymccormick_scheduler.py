@@ -71,16 +71,22 @@ def course_scheduler (course_descriptions, goal_conditions, initial_state):
 		Each semester must have 12-18 hours scheduled. If no such satisfying set exists (in 4 years of semesters using
 		only fall and spring terms), returns an empty set.
 	"""
-	goal_conditions_map = add_semester_field(goal_conditions, 8)
+	goal_conditions_map = create_goal_tuples(goal_conditions)
 	initial_state_map = add_semester_field(initial_state, 0)
 	tot_hours_per_semester = {}
 	for i in range (1,9):
 		tot_hours_per_semester[i] = 0
-	schedule, tot_hours_per_semester = create_satisfying_schedule(course_descriptions, goal_conditions_map, initial_state_map, tot_hours_per_semester)
+	schedule, tot_hours_per_semester = create_satisfying_schedule_2(course_descriptions, goal_conditions_map, initial_state_map, tot_hours_per_semester, 1)
 	if len(schedule) == 0:
 		return schedule
 	schedule = fill_courseload(course_descriptions, schedule, tot_hours_per_semester)
 	return format_schedule(schedule, course_descriptions)
+
+def create_goal_tuples (goal_conditions):
+	new_goal_conditions = []
+	for goal in goal_conditions:
+		new_goal_conditions.append((goal, 8))
+	return new_goal_conditions
 
 def format_schedule(schedule, course_descriptions):
 	# TODO
@@ -104,7 +110,87 @@ def format_schedule(schedule, course_descriptions):
 				formatted_schedule[(course[0], course[1])] = (course_descriptions[course][0], (semester, year), ())
 	return formatted_schedule
 
-def create_satisfying_schedule (course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester):
+def create_satisfying_schedule_2 (course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, depth):
+	"""
+	PRE:
+		course_descriptions: Dictionary of courses with the following form.
+			key - Course(program='<department>', designation='<number>') e.g. Course(program='CS', designation='2201')
+			value - CourseInfo(credits='<# credit hours>', terms=<terms list>, prereqs=<prereqs list>) 
+				e.g. CourseInfo(credits='3', terms=('Spring', 'Fall'), prereqs=((('CS', '1101'),),))
+		goal_conditions: List of tuples mapping courses to be taken to the latest semester in which they can be taken given the
+			current set of completed courses. Numbers are used to represent the semesters (1="Fall freshman", 2="Spring freshman"...)
+			e.g. [((‘CS’, ‘mathematics’): 8), ((‘CS’, ‘core’), 8), ((‘MATH’, ’3641’), 7), ((‘CS’, ’1151’), 7), ((‘MATH’, ‘2410’), 3)]
+		completed_courses: Map mapping scheduled courses to the semester they are to be completed. A zero indicates they are pre-conditions
+			e.g. {('CS', '1101'): 1, ('SPAN', '1101'): 0, ('CS', '2201'): 2}
+		tot_hours_per_semester: Map mapping each semester (1-8) to the total number of hours taken in that semseter.
+			e.g. {1: 0, 2: 6, 3: 3, 4: 10, 5: 7, 6: 6, 7: 6, 8: 9}
+	POST:
+		Returns 2 dictionaries. The first maps courses to the semester that they will be taken. The second maps semesters to the total number
+			of hours taken that semester. All prerequisites are satisfied and no semester has more than 18 hours.
+	"""
+	if len(goal_conditions) == 0:
+		return completed_courses, tot_hours_per_semester
+	first_goal = goal_conditions[-1]
+	del goal_conditions[-1]
+	goal_class = first_goal[0]
+	goal_class_info = course_descriptions[goal_class]
+	semester_assignment = first_goal[1]
+	if goal_class in completed_courses:
+		if completed_courses[goal_class] <= semester_assignment:
+			# No need to reassign it
+			return create_satisfying_schedule_2 (course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, depth)
+		else:
+			# It was assigned wrong the first time, backtrack
+			return {}, {}
+
+	while semester_assignment > 0:
+		if is_valid_semester_assignment(goal_class_info, completed_courses, tot_hours_per_semester, goal_class, semester_assignment):
+			schedule = assign_course_to_semester(goal_class, goal_conditions, dict(completed_courses), dict(tot_hours_per_semester), goal_class_info, semester_assignment, course_descriptions, depth)
+			if len(schedule[0]) > 0:
+				return schedule
+		semester_assignment -= 1
+	return {}, {}
+
+def is_valid_semester_assignment(course_info, completed_courses, tot_hours_per_semester, course, semester_assignment):
+	if int(course_info[0]) + tot_hours_per_semester[semester_assignment] > 18:
+		return False
+	if course in completed_courses and completed_courses[course] != semester_assignment:
+		return False
+	if len(course_info[2]) > 0 and semester_assignment == 1:
+	 	return False
+	if semester_assignment % 2 == 0:
+		return 'Spring' in course_info[1]
+	return 'Fall' in course_info[1]
+
+def assign_course_to_semester(course, goal_conditions, completed_courses, tot_hours_per_semester, course_info, semester, course_descriptions, depth):
+	completed_courses[course] = semester
+	tot_hours_per_semester[semester] += int(course_info[0])
+	latest_prereq_semester = semester
+	if int(course_info[0]) != 0:
+		latest_prereq_semester -= 1
+	if len(course_info[2]) == 0:
+		return create_satisfying_schedule_2(course_descriptions, list(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester), depth+1)
+	for prereq_set in course_info[2]:
+		new_goal_conditions = list(goal_conditions)
+		for prereq in prereq_set:
+			new_goal_conditions.append((prereq, latest_prereq_semester))
+		schedule = add_prereq_set(prereq_set, course_descriptions, list(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester), depth+1, latest_prereq_semester)
+		if len(schedule[0]) > 0:
+			return schedule
+		else:
+			print ("Test")
+	return {}, {}
+
+def add_prereq_set (prereq_set, course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, depth, latest_prereq_semester):
+	for prereq in prereq_set:
+		if prereq in completed_courses:
+			if completed_courses[prereq] > latest_prereq_semester:
+				return {},{}
+		else:
+			goal_conditions.append((prereq, latest_prereq_semester))
+	return create_satisfying_schedule_2(course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, depth)
+
+def create_satisfying_schedule (course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, depth = 1):
 	"""
 	PRE:
 		course_descriptions: Dictionary of courses with the following form.
@@ -122,10 +208,14 @@ def create_satisfying_schedule (course_descriptions, goal_conditions, completed_
 		Returns 2 dictionaries. The first maps courses to the semester that they will be taken. The second maps semesters to the total number
 			of hours taken that semester. All prerequisites are satisfied and no semester has more than 18 hours.
 	"""
-	round_2 = False
 	if len(goal_conditions) == 0:
 		return completed_courses, tot_hours_per_semester
+	goal_length = len(goal_conditions)
+	pass_num = 0
 	for goal_class in goal_conditions:
+		pass_num += 1
+		if depth < 75:
+			print (depth, pass_num, goal_length)
 		goal_latest_semester = goal_conditions[goal_class]
 		if goal_class in completed_courses:
 			# If the current goal class has already been assigned and satisfies the semester requirement, skip this goal. Otherwise remove it from the assigned classes.
@@ -133,16 +223,16 @@ def create_satisfying_schedule (course_descriptions, goal_conditions, completed_
 			if completed_courses[goal_class] <= goal_latest_semester:
 				new_goal_conditions = dict(goal_conditions)
 				del new_goal_conditions[goal_class]
-				return create_satisfying_schedule(course_descriptions, new_goal_conditions, completed_courses, tot_hours_per_semester)
+				return create_satisfying_schedule(course_descriptions, new_goal_conditions, completed_courses, tot_hours_per_semester, depth + 1)
 			else:
 				tot_hours_per_semester[completed_courses[goal_class]] -= int(course_descriptions[goal_class][0])
 				del completed_courses[goal_class]
-		perform_op = process_course (course_descriptions, dict(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester), goal_class)
+		perform_op = process_course (course_descriptions, dict(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester), goal_class, depth)
 		if len(perform_op[0]) > 0:
 			return perform_op
 	return {}, tot_hours_per_semester
 
-def process_course (course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, course):
+def process_course (course_descriptions, goal_conditions, completed_courses, tot_hours_per_semester, course, depth):
 	"""
 	PRE:
 		course_descriptions: Dictionary of courses with the following form.
@@ -181,9 +271,11 @@ def process_course (course_descriptions, goal_conditions, completed_courses, tot
 	if credit_hours > 0:
 		# If non-zero number of credit hours, goals need to go in previous semester at the latest
 		pre_semester -= 1
+		if pre_semester < 1:
+			return {}, {}
 	if len(prereqs) == 0:
 		# If no prereqs, just move to next goal
-		return create_satisfying_schedule(course_descriptions, dict(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester))
+		return create_satisfying_schedule(course_descriptions, dict(goal_conditions), dict(completed_courses), dict(tot_hours_per_semester), depth + 1)
 	for course_set in prereqs:
 		# Seperately branch for each set of prereqs
 		new_goal_conditions = dict(goal_conditions)
@@ -196,7 +288,7 @@ def process_course (course_descriptions, goal_conditions, completed_courses, tot
 		if len(new_goal_conditions) == 0:
 			return completed_courses
 		else:
-			attempt = create_satisfying_schedule(course_descriptions, new_goal_conditions, dict(completed_courses), dict(tot_hours_per_semester))
+			attempt = create_satisfying_schedule(course_descriptions, new_goal_conditions, dict(completed_courses), dict(tot_hours_per_semester), depth + 1)
 			if len(attempt) != 0:
 				return attempt
 	return {}, {}
@@ -304,7 +396,7 @@ def main():
 	# TODO: Add heuristic portion
 	Course = namedtuple('Course', 'program, designation')
 	goal_conditions = [Course('CS', 'major')]
-	initial_state = [Course('CS', '1101'), Course('JAPN', '1101')]
+	initial_state = [Course('CS', '1101')]
 	plan = course_scheduler(create_course_dict(), goal_conditions, initial_state)
 	pp = pprint.PrettyPrinter()
 
